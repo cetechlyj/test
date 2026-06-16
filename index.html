@@ -7,34 +7,100 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      --bg: #f0f4f8;
+      --card-bg: #fff;
+      --card-shadow: rgba(0,0,0,0.08);
+      --title: #1a2e4a;
+      --subtitle: #8a9bb0;
+      --input-border: #d0dae6;
+      --input-focus: #3b7de8;
+      --accent: #3b7de8;
+      --accent-hover: #2c63c5;
+      --filter-text: #5a7090;
+      --li-border: #e8eef5;
+      --li-hover: #f7faff;
+      --todo-text: #1a2e4a;
+      --done-text: #aab;
+      --delete: #c0cdd8;
+      --delete-hover: #e05050;
+      --delete-hover-bg: #fff0f0;
+      --summary: #8a9bb0;
+      --empty: #b0bec8;
+    }
+
+    [data-theme="dark"] {
+      --bg: #121821;
+      --card-bg: #1c2733;
+      --card-shadow: rgba(0,0,0,0.4);
+      --title: #e6edf5;
+      --subtitle: #7a8ba0;
+      --input-border: #354556;
+      --input-focus: #5a9bf0;
+      --accent: #3b7de8;
+      --accent-hover: #5a9bf0;
+      --filter-text: #9bb0c8;
+      --li-border: #2a3744;
+      --li-hover: #232f3c;
+      --todo-text: #d8e2ee;
+      --done-text: #5a6878;
+      --delete: #4a5868;
+      --delete-hover: #f07070;
+      --delete-hover-bg: #3a2424;
+      --summary: #7a8ba0;
+      --empty: #4a5868;
+    }
+
     body {
       font-family: 'Segoe UI', sans-serif;
-      background: #f0f4f8;
+      background: var(--bg);
       display: flex;
       justify-content: center;
       padding: 48px 16px;
       min-height: 100vh;
+      transition: background 0.25s;
     }
 
     .container {
-      background: #fff;
+      background: var(--card-bg);
       border-radius: 16px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 24px var(--card-shadow);
       padding: 36px;
       width: 100%;
       max-width: 480px;
       height: fit-content;
+      transition: background 0.25s;
+    }
+
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
     }
 
     h1 {
       font-size: 1.6rem;
-      color: #1a2e4a;
-      margin-bottom: 8px;
+      color: var(--title);
     }
+
+    .theme-toggle {
+      background: none;
+      border: 1.5px solid var(--input-border);
+      border-radius: 50%;
+      width: 38px;
+      height: 38px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: border-color 0.2s, background 0.15s;
+    }
+
+    .theme-toggle:hover { background: var(--li-hover); }
 
     .subtitle {
       font-size: 0.85rem;
-      color: #8a9bb0;
+      color: var(--subtitle);
       margin-bottom: 28px;
     }
 
@@ -47,20 +113,22 @@
     input[type="text"] {
       flex: 1;
       padding: 10px 14px;
-      border: 1.5px solid #d0dae6;
+      border: 1.5px solid var(--input-border);
       border-radius: 8px;
       font-size: 0.95rem;
       outline: none;
+      background: var(--card-bg);
+      color: var(--todo-text);
       transition: border-color 0.2s;
     }
 
     input[type="text"]:focus {
-      border-color: #3b7de8;
+      border-color: var(--input-focus);
     }
 
     button.add-btn {
       padding: 10px 18px;
-      background: #3b7de8;
+      background: var(--accent);
       color: #fff;
       border: none;
       border-radius: 8px;
@@ -70,7 +138,7 @@
       white-space: nowrap;
     }
 
-    button.add-btn:hover { background: #2c63c5; }
+    button.add-btn:hover { background: var(--accent-hover); }
 
     .filters {
       display: flex;
@@ -80,18 +148,18 @@
 
     .filter-btn {
       padding: 5px 14px;
-      border: 1.5px solid #d0dae6;
+      border: 1.5px solid var(--input-border);
       border-radius: 20px;
-      background: #fff;
+      background: var(--card-bg);
       font-size: 0.82rem;
       cursor: pointer;
-      color: #5a7090;
+      color: var(--filter-text);
       transition: all 0.15s;
     }
 
     .filter-btn.active {
-      background: #3b7de8;
-      border-color: #3b7de8;
+      background: var(--accent);
+      border-color: var(--accent);
       color: #fff;
     }
 
@@ -107,12 +175,12 @@
       align-items: center;
       gap: 12px;
       padding: 12px 14px;
-      border: 1.5px solid #e8eef5;
+      border: 1.5px solid var(--li-border);
       border-radius: 10px;
       transition: background 0.15s;
     }
 
-    li:hover { background: #f7faff; }
+    li:hover { background: var(--li-hover); }
 
     li.done {
       opacity: 0.5;
@@ -121,7 +189,7 @@
     li input[type="checkbox"] {
       width: 18px;
       height: 18px;
-      accent-color: #3b7de8;
+      accent-color: var(--accent);
       cursor: pointer;
       flex-shrink: 0;
     }
@@ -129,18 +197,18 @@
     .todo-text {
       flex: 1;
       font-size: 0.95rem;
-      color: #1a2e4a;
+      color: var(--todo-text);
     }
 
     li.done .todo-text {
       text-decoration: line-through;
-      color: #aab;
+      color: var(--done-text);
     }
 
     .delete-btn {
       background: none;
       border: none;
-      color: #c0cdd8;
+      color: var(--delete);
       font-size: 1.1rem;
       cursor: pointer;
       padding: 2px 6px;
@@ -149,20 +217,20 @@
     }
 
     .delete-btn:hover {
-      color: #e05050;
-      background: #fff0f0;
+      color: var(--delete-hover);
+      background: var(--delete-hover-bg);
     }
 
     .summary {
       margin-top: 20px;
       font-size: 0.82rem;
-      color: #8a9bb0;
+      color: var(--summary);
       text-align: right;
     }
 
     .empty {
       text-align: center;
-      color: #b0bec8;
+      color: var(--empty);
       padding: 32px 0;
       font-size: 0.9rem;
     }
@@ -170,7 +238,10 @@
 </head>
 <body>
   <div class="container">
-    <h1>📝 할 일 관리</h1>
+    <div class="header-row">
+      <h1>📝 할 일 관리</h1>
+      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="테마 전환">🌙</button>
+    </div>
     <p class="subtitle">오늘의 할 일을 추가하고 관리하세요</p>
 
     <div class="input-row">
@@ -194,6 +265,23 @@
     let todos = [];
     let currentFilter = 'all';
     let nextId = 1;
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+
+    function toggleTheme() {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('theme', next);
+      applyTheme(next);
+    }
+
+    (function initTheme() {
+      const saved = localStorage.getItem('theme');
+      const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      applyTheme(theme);
+    })();
 
     const input = document.getElementById('todoInput');
     input.addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
