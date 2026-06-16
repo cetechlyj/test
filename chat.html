@@ -430,6 +430,87 @@
     /* ── Mention highlight ── */
     .mention { color: var(--accent); font-weight: 500; }
 
+    /* ── Search bar ── */
+    .search-bar {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 20px;
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .search-bar.open { display: flex; }
+
+    .search-input-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0 10px;
+      transition: border-color 0.2s;
+    }
+
+    .search-input-wrap:focus-within { border-color: var(--accent); }
+
+    .search-input-wrap input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 0.88rem;
+      padding: 9px 0;
+    }
+
+    .search-input-wrap input::placeholder { color: var(--text-muted); }
+
+    .search-count {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      min-width: 46px;
+      text-align: center;
+    }
+
+    .search-nav {
+      display: flex;
+      gap: 2px;
+    }
+
+    .search-nav button {
+      width: 30px; height: 30px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+
+    .search-nav button:hover { background: var(--accent-muted); color: var(--text-primary); }
+    .search-nav button:disabled { opacity: 0.3; cursor: default; }
+    .search-nav button:disabled:hover { background: none; color: var(--text-muted); }
+
+    mark.search-hit {
+      background: var(--yellow);
+      color: #1a1a1a;
+      border-radius: 2px;
+      padding: 0 1px;
+    }
+
+    mark.search-hit.current {
+      background: var(--accent);
+      color: #fff;
+    }
+
     /* ── Typing indicator ── */
     .typing {
       padding: 0 20px 8px;
@@ -516,10 +597,29 @@
     <h2 id="channelName">일반</h2>
     <span class="header-desc">팀 전체 소통 채널</span>
     <div class="header-actions">
-      <button class="icon-btn" title="검색" onclick="alert('검색 기능')">🔍</button>
+      <button class="icon-btn" title="검색" onclick="toggleSearch()">🔍</button>
       <button class="icon-btn" title="멤버" onclick="alert('멤버 목록')">👥</button>
       <button class="icon-btn" title="스레드 열기" onclick="toggleThread()">💬</button>
     </div>
+  </div>
+
+  <div class="search-bar" id="searchBar">
+    <div class="search-input-wrap">
+      🔍
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="이 채널에서 메시지 검색"
+        oninput="runSearch()"
+        onkeydown="handleSearchKey(event)"
+      />
+    </div>
+    <span class="search-count" id="searchCount"></span>
+    <div class="search-nav">
+      <button id="searchPrev" title="이전 (Shift+Enter)" onclick="navSearch(-1)" disabled>▲</button>
+      <button id="searchNext" title="다음 (Enter)" onclick="navSearch(1)" disabled>▼</button>
+    </div>
+    <button class="icon-btn" title="닫기 (Esc)" onclick="toggleSearch()">✕</button>
   </div>
 
   <div class="messages" id="messages">
@@ -760,6 +860,103 @@
 
   function escapeHtml(str) {
     return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  /* ── Message search ── */
+  let searchHits = [];      // <mark> elements, in document order
+  let currentHit = -1;
+
+  function toggleSearch() {
+    const bar = document.getElementById('searchBar');
+    const open = bar.classList.toggle('open');
+    if (open) {
+      document.getElementById('searchInput').focus();
+    } else {
+      document.getElementById('searchInput').value = '';
+      runSearch();
+    }
+  }
+
+  function handleSearchKey(e) {
+    if (e.key === 'Escape') { toggleSearch(); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      navSearch(e.shiftKey ? -1 : 1);
+    }
+  }
+
+  function clearHighlights() {
+    document.querySelectorAll('mark.search-hit').forEach(m => {
+      const parent = m.parentNode;
+      parent.replaceChild(document.createTextNode(m.textContent), m);
+      parent.normalize();
+    });
+    searchHits = [];
+    currentHit = -1;
+  }
+
+  function runSearch() {
+    clearHighlights();
+    const term = document.getElementById('searchInput').value.trim();
+    const prevBtn = document.getElementById('searchPrev');
+    const nextBtn = document.getElementById('searchNext');
+
+    if (!term) {
+      document.getElementById('searchCount').textContent = '';
+      prevBtn.disabled = nextBtn.disabled = true;
+      return;
+    }
+
+    const lower = term.toLowerCase();
+
+    // Walk text nodes inside each visible message body, wrap matches in <mark>
+    document.querySelectorAll('#messages .msg-text').forEach(el => {
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      const textNodes = [];
+      let n;
+      while ((n = walker.nextNode())) textNodes.push(n);
+
+      textNodes.forEach(node => {
+        const text = node.nodeValue;
+        const lowerText = text.toLowerCase();
+        if (!lowerText.includes(lower)) return;
+
+        const frag = document.createDocumentFragment();
+        let idx = 0, found;
+        while ((found = lowerText.indexOf(lower, idx)) !== -1) {
+          if (found > idx) frag.appendChild(document.createTextNode(text.slice(idx, found)));
+          const mark = document.createElement('mark');
+          mark.className = 'search-hit';
+          mark.textContent = text.slice(found, found + term.length);
+          frag.appendChild(mark);
+          searchHits.push(mark);
+          idx = found + term.length;
+        }
+        if (idx < text.length) frag.appendChild(document.createTextNode(text.slice(idx)));
+        node.parentNode.replaceChild(frag, node);
+      });
+    });
+
+    const countEl = document.getElementById('searchCount');
+    if (searchHits.length === 0) {
+      countEl.textContent = '결과 없음';
+      prevBtn.disabled = nextBtn.disabled = true;
+    } else {
+      prevBtn.disabled = nextBtn.disabled = false;
+      navSearch(1); // jump to first hit
+    }
+  }
+
+  function navSearch(dir) {
+    if (searchHits.length === 0) return;
+    if (currentHit >= 0 && searchHits[currentHit]) {
+      searchHits[currentHit].classList.remove('current');
+    }
+    currentHit = (currentHit + dir + searchHits.length) % searchHits.length;
+    const hit = searchHits[currentHit];
+    hit.classList.add('current');
+    hit.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    document.getElementById('searchCount').textContent = `${currentHit + 1} / ${searchHits.length}`;
   }
 </script>
 </body>
